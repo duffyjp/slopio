@@ -278,7 +278,7 @@ LEVELS.push({
     at(2, 13, 'S');
     L.walls = true;
   }),
-  hint: 'MOVE arrows / WASD   SPACE jump (hold)   DOWN slam   J spit globs'
+  hint: 'WASD / arrows move · up jump · down slam · SPACE spits globs'
 });
 
 
@@ -1289,15 +1289,19 @@ function wireTouch() {
   cv.addEventListener('pointerdown', ev => {
     ev.preventDefault();
     if (MENUISH[State.id]) press('Enter', false);
-    else if (State.id === 'play') press('KeyJ', false);
+    else if (State.id === 'play') press('Space', false);   // tap = the attack key
   });
   [stickEl, pauseEl, cv].forEach(el => el.addEventListener('contextmenu', ev => ev.preventDefault()));
 }
 const kd = (...c) => c.some(k => K.down[k]);
 const kh = (...c) => c.some(k => K.hit[k]);
 const L_ = () => kd('ArrowLeft', 'KeyA'), R_ = () => kd('ArrowRight', 'KeyD');
-const UP_ = () => kd('ArrowUp', 'KeyW', 'Space'), DN_ = () => kd('ArrowDown', 'KeyS');
-const ACT_ = () => kh('KeyJ', 'KeyX', 'KeyK');
+/* WASD or the arrow keys steer, jump and slam; Space spits a glob (J / X / K are
+   kept as aliases for anyone whose hand is already there). On a phone the
+   thumbstick writes ArrowUp / ArrowDown / ArrowLeft / ArrowRight and a tap writes
+   Space, so the game only ever sees one control scheme.                        */
+const UP_ = () => kd('ArrowUp', 'KeyW'), DN_ = () => kd('ArrowDown', 'KeyS');
+const ACT_ = () => kh('Space', 'KeyJ', 'KeyX', 'KeyK');
 
 /* ============================================================ CAMERA ====== */
 const Cam = { x: 0, y: 0, sx: 0, sy: 0, shake: 0, look: 0,
@@ -1531,7 +1535,7 @@ function updatePlayer() {
     P.vx -= clamp(P.vx, -fr, fr);
   }
   /* jump buffering + coyote */
-  if (kh('Space', 'ArrowUp', 'KeyW')) P.jbuf = JBUF;
+  if (kh('ArrowUp', 'KeyW')) P.jbuf = JBUF;
   if (P.onGround) P.coyote = COYOTE; else if (P.coyote > 0) P.coyote--;
   if (P.jbuf > 0) P.jbuf--;
   if (P.jbuf > 0 && (P.onGround || P.coyote > 0)) {
@@ -3040,7 +3044,7 @@ function drawTitle(g) {
     ? ['DRAG THE STICK   move · jump · slam', 'push up  jump   hold it  full height',
        'up-diagonal  running jump + slow-fall', 'down  jelly slam      tap the screen  spit',
        'C  about — license & source']
-    : ['ARROWS / WASD  move       SPACE  jump', 'DOWN  jelly slam      J  spit a glob',
+    : ['WASD / ARROWS  move  ·  up  jump', 'down  jelly slam      SPACE  spit a glob',
        'P  pause      M  mute      R  restart', 'C  about — license & source'];
   const boxH = 30 + rows.length * 14;
   g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(VW / 2 - 128, 138, 256, boxH);
@@ -3064,7 +3068,7 @@ function drawIntroCard(g) {
   txt(g, L.def.pal === 'L4' ? 'BOSS' : 'LEVEL ' + (L.idx + 1), VW / 2, y + 44, 10, 'rgba(255,255,255,0.6)', 'center');
   txt(g, L.pal.sub, VW / 2, y + 58, 9, L.pal.lit, 'center');
   if (L.idx === 0) txt(g, COARSE ? 'drag the stick to move, jump and slam   tap to spit'
-    : 'MOVE arrows / WASD   SPACE jump   DOWN slam   J spit', VW / 2, y + 78, 8, 'rgba(255,255,255,0.7)', 'center');
+    : 'WASD / arrows move, up jumps, down slams   SPACE spits', VW / 2, y + 78, 8, 'rgba(255,255,255,0.7)', 'center');
   if (L.idx === 3) {
     txt(g, 'ride the floor jets up to the fins, pelt him, drop back down', VW / 2, y + 78, 8, '#ff9ec4', 'center');
     txt(g, 'eight clean hits jam his armour — then squish him', VW / 2, y + 90, 8, '#ff9ec4', 'center');

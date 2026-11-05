@@ -15,10 +15,10 @@ whatever is waiting at the end of them.
 
 | Key | Action |
 | --- | --- |
-| Arrows / WASD | Move |
-| Space (hold) | Jump — hold longer to fly higher |
-| Down | Jelly slam (stomp enemies, break brittle floors and ice, freeze liquid) |
-| J / X / K | Spit a glob (it arcs as it flies) |
+| A / D or ← / → | Move |
+| W or ↑ | Jump — hold it for full height, keep holding past the apex to slow-fall |
+| S or ↓ | Jelly slam (stomp enemies, break brittle floors and ice, freeze liquid) |
+| **Space** | Spit a glob — this is the attack key (`J`, `X` and `K` still work too) |
 | P | Pause |
 | M | Mute |
 | R | Restart the level |
@@ -51,9 +51,10 @@ button in the margin at the right.
 While you are actually playing there is nothing on screen but the game: the source
 link and the pause control only exist on the title and about screens.
 
-The stick and taps feed the same key state the keyboard does, so the game logic is
-unchanged. Add `#touch` to the URL on a desktop to force the phone layout — handy
-when testing, e.g. `index.html#touch`.
+There is only one control scheme inside the game: the thumbstick writes the arrow
+keys (left, right, up = jump, down = slam) and a tap writes Space, which is the
+attack key on a keyboard too. Add `#touch` to the URL on a desktop to force the
+phone layout — handy when testing, e.g. `index.html#touch`.
 
 ## The grids
 
