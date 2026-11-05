@@ -32,16 +32,28 @@ behind, which is how you restock away from the fixed pickups.
 
 ### On a phone or tablet
 
-On coarse-pointer devices (anything with no mouse hover) the game puts an
-on-screen pad in the letterbox around the picture: `◀ ▶` move, `▲` jump, `▼` jelly
-slam, `◎` spit, `II` pause, `START` to confirm. Tapping the picture itself works as
-Enter, so every card can be pushed through with one thumb. A small
-`github.com/duffyjp/slopio · MIT` link sits at the bottom, since there is no `G`
-key to press there.
+Touch devices (no fine pointer) get a different control set:
 
-Landscape is the better way to play; in portrait the picture is letterboxed down
-to the screen width rather than cropped. The pads feed the same key state as the
-keyboard, so nothing else about the game changes.
+- **One thumbstick** — drag to move; push up to jump; keep it up and the jump
+  reaches full height; hold a diagonal up for a running jump with the slow-fall;
+  pull down for the jelly slam.
+- **Tap anywhere on the picture** to spit a glob. On menus the same tap works as
+  Enter, so every card can be pushed through.
+- **Pause** sits in the band above the picture, nowhere a thumb rests.
+
+In **portrait** the picture takes the full screen width and the leftover height
+becomes drawn filler: a faint `S L O P I O` wordmark over the same drifting-chip
+motif the title screen uses above, and a control deck holding the stick below.
+Nothing the thumb touches is ever on top of the game. In **landscape** the picture
+fills the height and the stick sits in the letterbox margin at the left, the pause
+button in the margin at the right.
+
+While you are actually playing there is nothing on screen but the game: the source
+link and the pause control only exist on the title and about screens.
+
+The stick and taps feed the same key state the keyboard does, so the game logic is
+unchanged. Add `#touch` to the URL on a desktop to force the phone layout — handy
+when testing, e.g. `index.html#touch`.
 
 ## The grids
 
@@ -103,9 +115,10 @@ README.md    this file
 LICENSE      MIT
 ```
 
-Inside `index.html` the body is just three things: `#wrap` holding `#game` and
-`#ui`, `#pad` with the touch buttons, and `#err` where a boot failure prints
-instead of a black screen.
+Inside `index.html` the body is a phone-shaped stack: `#deck` holds `#bandTop`,
+`#wrap` (which holds `#game` and `#ui`), `#bandBot`, and `#pad` with the
+thumbstick and the pause button. Outside it there is only `#linkbar` (menus only)
+and `#err`, where a boot failure prints instead of a black screen.
 
 The single file is assembled from thirteen parts (`p01_head.js` through
 `p13_main.js`), marked inline with `/* ==== pNN_name.js ==== */` comments so the

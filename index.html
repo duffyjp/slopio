@@ -27,61 +27,63 @@
   html, body { margin: 0; padding: 0; height: 100%; background: #05070a; overflow: hidden;
     display: flex; align-items: center; justify-content: center; touch-action: none;
     -webkit-user-select: none; user-select: none; -webkit-text-size-adjust: 100%; }
-  #wrap { position: relative; }
+  /* #deck stacks: filler band, the picture, filler band. On a phone held upright
+     the picture fills the width and the two bands take the rest of the height, so
+     the controls never sit on top of the game. */
+  #deck { position: relative; display: flex; flex-direction: column; align-items: center; }
+  #wrap { position: relative; flex: none; }
   canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block;
     box-shadow: 0 0 70px rgba(80, 240, 180, 0.14), 0 0 2px rgba(143, 240, 200, 0.5); }
   /* crisp text layer: sits exactly over the pixel buffer, never takes touches */
   #ui { position: absolute; left: 0; top: 0; box-shadow: none; pointer-events: none;
     image-rendering: auto; }
+  #bandTop, #bandBot { display: none; box-shadow: none; image-rendering: auto; }
+  html.coarse #bandTop, html.coarse #bandBot { display: block; }
   #err { position: fixed; left: 12px; bottom: 12px; color: #ff8fa3; font: 12px monospace;
-    display: none; max-width: 82%; background: rgba(0,0,0,.6); padding: 6px 8px; }
+    display: none; max-width: 82%; background: rgba(0,0,0,.6); padding: 6px 8px; z-index: 9; }
 
-  /* ---- touch pad: shown only on coarse-pointer devices (phones/tablets) -- */
+  /* ---- controls: only when the device has no fine pointer. The html.coarse
+        class comes from the same test the game uses, so JS and CSS agree. --- */
   #pad { display: none; }
-  @media (hover: none) and (pointer: coarse) { #pad { display: block; } }
-  .btn { position: fixed; z-index: 6; box-sizing: border-box; pointer-events: auto;
-    touch-action: none; -webkit-tap-highlight-color: transparent; -webkit-user-select: none;
-    user-select: none; padding: 0; cursor: pointer;
-    width: 16vmin; height: 16vmin; border-radius: 50%;
-    background: rgba(8, 20, 16, 0.42); border: 2px solid rgba(143, 240, 200, 0.34);
-    color: rgba(143, 240, 200, 0.85); font: 600 6.4vmin/1 monospace; text-shadow: 0 1px 0 #000; }
-  .btn.on { background: rgba(143, 240, 200, 0.26); border-color: #8ef0c8; color: #ffe14f; }
-  .bL { left: 3vmin;  bottom: 4vmin; }
-  .bR { left: 22vmin; bottom: 4vmin; }
-  .bD { left: 12.5vmin; bottom: 22vmin; }
-  .bA { right: 3vmin;  bottom: 4vmin; }
-  .bB { right: 22vmin; bottom: 4vmin; }
-  .bS { right: 12.5vmin; bottom: 22vmin; }
-  .bP { right: 3vmin; top: max(3vmin, env(safe-area-inset-top)); width: 13vmin; height: 13vmin;
-    font-size: 4.4vmin; }
-  /* a real link for touch devices, where there is no G key to press */
+  html.coarse #pad { display: block; position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    pointer-events: none; }
+  #stick { position: absolute; pointer-events: auto; touch-action: none; box-sizing: border-box;
+    border-radius: 50%; background: rgba(8, 20, 16, 0.5);
+    border: 2px solid rgba(143, 240, 200, 0.30); }
+  #stick.live { border-color: #8ef0c8; background: rgba(20, 46, 36, 0.62); }
+  #knob { position: absolute; left: 50%; top: 50%; border-radius: 50%; pointer-events: none;
+    transform: translate(-50%, -50%); background: rgba(143, 240, 200, 0.22);
+    border: 2px solid rgba(143, 240, 200, 0.55); }
+  #stick.live #knob { background: rgba(143, 240, 200, 0.34); border-color: #8ef0c8; }
+  #pauseBtn { position: absolute; pointer-events: auto; touch-action: none; box-sizing: border-box;
+    border-radius: 50%; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    background: rgba(8, 20, 16, 0.5); border: 2px solid rgba(143, 240, 200, 0.3);
+    color: rgba(143, 240, 200, 0.9); font: 600 4.2vmin/1 monospace; }
+  #pauseBtn:active { background: rgba(143, 240, 200, 0.25); color: #ffe14f; }
+  /* pause is not wanted on menu screens, so it is not offered there at all */
+  html.menu #pauseBtn { display: none; }
+
+  /* ---- a real link, but only on the title / about screens: never during a run,
+        so a thumb can never land on it by accident. ----------------------- */
   #linkbar { display: none; }
-  @media (hover: none) and (pointer: coarse) {
-    #linkbar { display: block; position: fixed; z-index: 6; pointer-events: auto;
-      bottom: max(2.5vmin, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
-      font: 10px monospace; color: rgba(143, 240, 200, 0.6); text-decoration: none;
-      background: rgba(0, 0, 0, 0.35); padding: 3px 8px; border: 1px solid rgba(143,240,200,0.22); }
-  }
-  /* in landscape the letterbox has room at the sides, so lift the pads clear */
-  @media (orientation: landscape) {
-    .bL { bottom: 12vmin; } .bR { bottom: 12vmin; } .bD { bottom: 30vmin; }
-    .bA { bottom: 12vmin; } .bB { bottom: 12vmin; } .bS { bottom: 30vmin; }
-  }
+  html.coarse.menu #linkbar { display: block; position: fixed; z-index: 6; pointer-events: auto;
+    left: 50%; bottom: 2.2vmin; transform: translateX(-50%);
+    font: 11px monospace; color: rgba(143, 240, 200, 0.65); text-decoration: none;
+    background: rgba(0, 0, 0, 0.4); padding: 6px 12px; border: 1px solid rgba(143,240,200,0.25); }
 </style>
 </head>
 <body>
-<div id="wrap">
-  <canvas id="game"></canvas>
-  <canvas id="ui"></canvas>
-</div>
-<div id="pad" aria-hidden="false">
-  <button class="btn bL" data-key="ArrowLeft" aria-label="move left">&#9664;</button>
-  <button class="btn bR" data-key="ArrowRight" aria-label="move right">&#9654;</button>
-  <button class="btn bD" data-key="ArrowDown" aria-label="jelly slam">&#9660;</button>
-  <button class="btn bA" data-key="Space" aria-label="jump">&#9650;</button>
-  <button class="btn bB" data-key="KeyJ" aria-label="spit a glob">&#9678;</button>
-  <button class="btn bS" data-key="KeyP" aria-label="pause">II</button>
-  <button class="btn bP" data-key="Enter" aria-label="start or confirm">START</button>
+<div id="deck">
+  <canvas id="bandTop"></canvas>
+  <div id="wrap">
+    <canvas id="game"></canvas>
+    <canvas id="ui"></canvas>
+  </div>
+  <canvas id="bandBot"></canvas>
+  <div id="pad">
+    <div id="stick" role="button" aria-label="thumbstick: drag to move, up to jump, down to slam"><i id="knob"></i></div>
+    <button id="pauseBtn" data-key="KeyP" aria-label="pause or resume">II</button>
+  </div>
 </div>
 <a id="linkbar" href="https://github.com/duffyjp/slopio" rel="noopener">github.com/duffyjp/slopio · MIT</a>
 <div id="err"></div>
@@ -1209,27 +1211,87 @@ window.addEventListener('keydown', e => {
   press(e.code, e.repeat);
 });
 window.addEventListener('keyup', e => { K.down[e.code] = false; });
-window.addEventListener('blur', () => { K.down = {}; if (State.id === 'play') State.set('pause'), S.pause(); });
+window.addEventListener('blur', () => { K.down = {}; stickOff(); if (State.id === 'play') State.set('pause'), S.pause(); });
 
 /* ---------------------------------------------------------- TOUCH INPUT -- */
-const COARSE = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+/* A phone has no keyboard, so the control set is one thumbstick (move, jump,
+   slam) plus a tap anywhere on the picture (spit). The stick lives in the band
+   below the picture, never on top of it, and it is big. Add #touch to the URL to
+   force this mode on a desktop while testing.                                  */
+const FORCE_TOUCH = /#touch/.test(location.href);
+const COARSE = FORCE_TOUCH ||
+  !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
 const MENUISH = { title: 1, about: 1, intro: 1, clear: 1, gameover: 1, cutscene: 1, credits: 1 };
+const stickEl = document.getElementById('stick'), knobEl = document.getElementById('knob');
+const pauseEl = document.getElementById('pauseBtn');
+if (COARSE) document.documentElement.classList.add('coarse');
+
+/* Hold or release a virtual key. A press also lights the one-frame "hit" flag,
+   which is what jump and spit read; movement reads the held flag.             */
+function holdKey(code, on) {
+  if (!!K.down[code] === !!on) return;
+  K.down[code] = !!on;
+  if (on) { K.hit[code] = true; A.resume(); }
+}
+const ST = { u: false, d: false };
+const DEAD_X = 0.28, DEAD_UP = 0.36, DEAD_DOWN = 0.42;
+function stickKeys(nx, ny) {
+  const L = nx < -DEAD_X, R = nx > DEAD_X, U = ny < -DEAD_UP, D = ny > DEAD_DOWN;
+  if (U && !ST.u) K.hit['ArrowUp'] = true;   // a fresh push up is a jump press
+  ST.u = U; ST.d = D;
+  holdKey('ArrowLeft', L); holdKey('ArrowRight', R);
+  holdKey('ArrowUp', U);   holdKey('ArrowDown', D);
+}
+function stickOff() {
+  ST.u = ST.d = false;
+  holdKey('ArrowLeft', false); holdKey('ArrowRight', false);
+  holdKey('ArrowUp', false);   holdKey('ArrowDown', false);
+  if (knobEl) knobEl.style.transform = 'translate(-50%, -50%)';
+}
 function wireTouch() {
-  for (const b of document.querySelectorAll('#pad [data-key]')) {
-    const code = b.getAttribute('data-key');
-    const on = ev => { ev.preventDefault(); b.classList.add('on'); press(code, false); };
-    const off = ev => { ev.preventDefault(); b.classList.remove('on'); release(code); };
-    b.addEventListener('pointerdown', on);
-    b.addEventListener('pointerup', off);
-    b.addEventListener('pointercancel', off);
-    b.addEventListener('pointerleave', off);
-    b.addEventListener('contextmenu', ev => ev.preventDefault());
-  }
-  // tapping the picture itself is Enter, so every card can be pushed through
+  if (!COARSE) return;
+  document.documentElement.classList.add('coarse');
+  let sid = -1, cx0 = 0, cy0 = 0, rad = 1;
+  const move = ev => {
+    let dx = ev.clientX - cx0, dy = ev.clientY - cy0;
+    const m = Math.hypot(dx, dy);
+    if (m > rad) { dx *= rad / m; dy *= rad / m; }
+    const travel = rad * 0.46, mm = Math.hypot(dx, dy);
+    const kk = mm > travel ? travel / mm : 1;
+    knobEl.style.transform = 'translate(calc(-50% + ' + (dx * kk).toFixed(1) + 'px), ' +
+      'calc(-50% + ' + (dy * kk).toFixed(1) + 'px))';
+    stickKeys(dx / rad, dy / rad);
+  };
+  stickEl.addEventListener('pointerdown', ev => {
+    ev.preventDefault();
+    const r = stickEl.getBoundingClientRect();
+    cx0 = r.left + r.width / 2; cy0 = r.top + r.height / 2; rad = Math.max(20, r.width / 2);
+    sid = ev.pointerId;
+    try { stickEl.setPointerCapture(sid); } catch (e) { }
+    stickEl.classList.add('live');
+    move(ev);
+  });
+  stickEl.addEventListener('pointermove', ev => { if (ev.pointerId === sid) { ev.preventDefault(); move(ev); } });
+  const up = ev => {
+    if (ev.pointerId !== sid) return;
+    sid = -1; stickEl.classList.remove('live'); stickOff();
+  };
+  stickEl.addEventListener('pointerup', up);
+  stickEl.addEventListener('pointercancel', up);
+
+  // pause lives in the top band, far away from where a thumb rests
+  pauseEl.addEventListener('pointerdown', ev => { ev.preventDefault(); pauseEl.classList.add('on'); press('KeyP', false); });
+  const pup = ev => { ev.preventDefault(); pauseEl.classList.remove('on'); release('KeyP'); };
+  pauseEl.addEventListener('pointerup', pup);
+  pauseEl.addEventListener('pointercancel', pup);
+
+  // the picture itself: Enter on every card, spit while playing
   cv.addEventListener('pointerdown', ev => {
     ev.preventDefault();
     if (MENUISH[State.id]) press('Enter', false);
+    else if (State.id === 'play') press('KeyJ', false);
   });
+  [stickEl, pauseEl, cv].forEach(el => el.addEventListener('contextmenu', ev => ev.preventDefault()));
 }
 const kd = (...c) => c.some(k => K.down[k]);
 const kh = (...c) => c.some(k => K.hit[k]);
@@ -2634,7 +2696,11 @@ function drawHUD(g) {
 const State = {
   id: 'title', hitStop: 0, levelDone: 0, quake: 0, warn: null, t: 0, sub: 0,
   victoryAt: 0, cut: null, card: 0,
-  set(id) { if (this.id === id) return; this.id = id; this.sub = 0; this.t = 0;
+  set(id) {
+    // on a phone the pause control and the source link only exist on menus, so
+    // there is nothing near the picture that a thumb can hit during a run
+    document.documentElement.classList.toggle('menu', id === 'title' || id === 'about');
+    if (this.id === id) return; this.id = id; this.sub = 0; this.t = 0;
     if (id === 'cutscene') this.cut = { conf: [], dimm: 0, led: 0, city: 0 }; },
   onKey(code) {
     if (code === 'KeyM') { A.setMute(!A.muted); S.blip(); return true; }
@@ -2971,8 +3037,9 @@ function drawTitle(g) {
   if (blink) txt(g, 'PRESS ENTER TO SQUISH', VW / 2, 112, 11, '#ffe14f', 'center');
   // controls card — one line per row, each short enough to stay inside the box
   const rows = COARSE
-    ? ['ARROWS / WASD  or the on-screen pads', 'SPACE or ▲  jump        ▼  jelly slam',
-       'J or ◎  spit a glob        II  pause', 'C  about — license & source']
+    ? ['DRAG THE STICK   move · jump · slam', 'push up  jump   hold it  full height',
+       'up-diagonal  running jump + slow-fall', 'down  jelly slam      tap the screen  spit',
+       'C  about — license & source']
     : ['ARROWS / WASD  move       SPACE  jump', 'DOWN  jelly slam      J  spit a glob',
        'P  pause      M  mute      R  restart', 'C  about — license & source'];
   const boxH = 30 + rows.length * 14;
@@ -2996,7 +3063,7 @@ function drawIntroCard(g) {
   bigTitle(g, L.pal.name, VW / 2, y, L.pal.lit);
   txt(g, L.def.pal === 'L4' ? 'BOSS' : 'LEVEL ' + (L.idx + 1), VW / 2, y + 44, 10, 'rgba(255,255,255,0.6)', 'center');
   txt(g, L.pal.sub, VW / 2, y + 58, 9, L.pal.lit, 'center');
-  if (L.idx === 0) txt(g, COARSE ? 'the pads move him   ▲ jump   ▼ slam   ◎ spit'
+  if (L.idx === 0) txt(g, COARSE ? 'drag the stick to move, jump and slam   tap to spit'
     : 'MOVE arrows / WASD   SPACE jump   DOWN slam   J spit', VW / 2, y + 78, 8, 'rgba(255,255,255,0.7)', 'center');
   if (L.idx === 3) {
     txt(g, 'ride the floor jets up to the fins, pelt him, drop back down', VW / 2, y + 78, 8, '#ff9ec4', 'center');
@@ -3144,32 +3211,129 @@ function render() {
   }
   blit();
 }
-let scale = 3;   // game pixels -> CSS pixels
-let px = 3;      // game pixels -> backing pixels of the pixel buffer
+/* ============================================================ LAYOUT ==== */
+/* scale = game pixels -> CSS pixels, px = game pixels -> backing pixels.
+   On a phone held upright the picture takes the full width and the two bands
+   take the rest of the height; the thumbstick sits in the lower band, so
+   nothing the thumb touches is ever in the way of the game.                   */
+let scale = 3;
+let px = 3;
+let PORTRAIT = false;
+const bandT = document.getElementById('bandTop'), bandB = document.getElementById('bandBot');
 function blit() {
   cx.setTransform(1, 0, 0, 1, 0, 0);
   cx.imageSmoothingEnabled = false;
   cx.clearRect(0, 0, cv.width, cv.height);
-  cx.drawImage(buf, 0, 0, VW, VH, 0, 0, VW * px, VH * px);
+  cx.drawImage(buf, 0, 0, VW, VH, 0, 0, cv.width, cv.height);
+}
+function drawBand(g, w, h, top) {
+  g.clearRect(0, 0, w, h);
+  const grd = g.createLinearGradient(0, 0, 0, h);
+  if (top) { grd.addColorStop(0, '#06090c'); grd.addColorStop(1, '#101f27'); }
+  else { grd.addColorStop(0, '#101d24'); grd.addColorStop(1, '#05080b'); }
+  g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  // the same drifting chip motif the title screen uses
+  for (let i = 0; i < 70; i++) {
+    const x = (i * 47 + (top ? 0 : 23)) % (w + 20) - 10;
+    const y = 8 + (i * 31) % Math.max(1, h - 24);
+    g.fillStyle = 'rgba(120,200,170,' + (0.05 + 0.07 * hash2(i, top ? 1 : 2)).toFixed(3) + ')';
+    g.fillRect(x | 0, y | 0, 9, 4);
+    g.fillStyle = 'rgba(255,225,79,' + (hash2(i, 7) > 0.86 ? 0.3 : 0.06).toFixed(3) + ')';
+    g.fillRect((x | 0) + 1, (y | 0) + 5, 6, 1);
+  }
+  // a lit inner edge, so the picture looks set into a console
+  g.fillStyle = 'rgba(143,240,200,0.10)'; g.fillRect(0, top ? h - 4 : 0, w, 3);
+  g.fillStyle = 'rgba(143,240,200,0.45)'; g.fillRect(0, top ? h - 1 : 0, w, 1);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  const ctext = (s, x, y, cap, weight) => {
+    // pick a size that cannot run past the band, whatever the browser's monospace
+    let f = cap; g.font = weight + ' ' + f + 'px monospace';
+    const mw = g.measureText(s).width;
+    if (mw > w * 0.92) { f = Math.max(7, Math.floor(f * w * 0.92 / mw)); g.font = weight + ' ' + f + 'px monospace'; }
+    g.fillText(s, x, y);
+  };
+  if (top) {
+    g.fillStyle = 'rgba(143,240,200,0.15)';
+    ctext('S L O P I O', w / 2, h * 0.46, Math.min(h * 0.34, 40), '700');
+  } else {
+    g.fillStyle = 'rgba(143,240,200,0.30)';
+    ctext('DRAG THE STICK   ·   TAP TO SPIT', w / 2, h * 0.075, Math.min(h * 0.10, 14), '600');
+  }
+}
+function sizeBand(c, w, h, dpr) {
+  c.style.width = w + 'px'; c.style.height = h + 'px';
+  c.style.display = h > 0 ? 'block' : 'none';
+  if (h <= 0) return;
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.imageSmoothingEnabled = false;
+  drawBand(g, w, h, c === bandT);
+}
+function placeControls(gw, gh, topH, botH, side) {
+  if (!COARSE) return;
+  if (PORTRAIT) {
+    const s = clamp(botH * 0.76, 120, 268);
+    stickEl.style.width = s + 'px'; stickEl.style.height = s + 'px';
+    stickEl.style.left = Math.round(Math.max(10, gw * 0.035)) + 'px';
+    stickEl.style.top = Math.round(topH + gh + (botH - s) / 2) + 'px';
+    knobEl.style.width = knobEl.style.height = Math.round(s * 0.46) + 'px';
+    const p = clamp(topH * 0.40, 46, 84);
+    pauseEl.style.width = pauseEl.style.height = p + 'px';
+    pauseEl.style.left = Math.round(gw - p - Math.max(10, gw * 0.035)) + 'px';
+    pauseEl.style.top = Math.round(Math.max(8, (topH - p) / 2)) + 'px';
+  } else {
+    // landscape: the stick goes in the letterbox margin at the left, the pause
+    // button in the one at the right, so the picture stays uncovered
+    const s = clamp(Math.min(side * 1.35, gh * 0.66), 110, 240);
+    stickEl.style.width = s + 'px'; stickEl.style.height = s + 'px';
+    stickEl.style.left = Math.round(-(side - 4)) + 'px';
+    stickEl.style.top = Math.round(Math.max(4, gh - s - 4)) + 'px';
+    knobEl.style.width = knobEl.style.height = Math.round(s * 0.46) + 'px';
+    const p = clamp(Math.min(side * 0.8, gh * 0.22), 40, 76);
+    pauseEl.style.width = pauseEl.style.height = p + 'px';
+    pauseEl.style.left = Math.round(Math.max(gw + 4, gw + side - p - 4)) + 'px';
+    pauseEl.style.top = '4px';
+  }
 }
 function fit() {
   const ww = window.innerWidth, wh = window.innerHeight;
   const dpr = Math.min(3, window.devicePixelRatio || 1);
-  const want = Math.min(ww / VW, wh / VH);
-  scale = Math.max(1, Math.min(6, Math.floor(want)));
-  if (want < 1) scale = Math.max(0.4, want);   // portrait phone: letterbox, never clip
-  px = scale >= 1 ? scale : clamp(Math.round(scale * dpr), 1, 6);
-  cv.style.width = (VW * scale) + 'px'; cv.style.height = (VH * scale) + 'px';
-  cv.width = VW * px; cv.height = VH * px;
+  PORTRAIT = COARSE && wh > ww;
+  let gw;
+  if (PORTRAIT) {
+    const margin = 10;
+    const deckMin = clamp((wh - margin * 2) * 0.30, 150, 300);   // room for the stick
+    gw = clamp(Math.min(ww - margin * 2, (wh - margin * 2 - deckMin) * VW / VH), 160, ww - margin * 2);
+    scale = gw / VW;
+  } else {
+    const want = Math.min(ww / VW, wh / VH);
+    scale = COARSE ? want : Math.floor(want);
+    if (scale < 1) scale = Math.max(0.4, want);
+    scale = Math.min(6, scale);
+  }
+  const gh = VH * scale;
+  gw = VW * scale;
+  px = (COARSE || scale < 1) ? clamp(Math.round(scale * dpr), 1, 6) : scale;
+  cv.style.width = gw + 'px'; cv.style.height = gh + 'px';
+  cv.width = Math.round(VW * px); cv.height = Math.round(VH * px);
   cx.imageSmoothingEnabled = false;
-  // the crisp layer matches the CSS box but backs it with device pixels
-  // the crisp layer only pays off once it has at least as many pixels as the
-  // upscaled picture does; below that the old path is identical and cheaper
+
+  let topH = 0, botH = 0;
+  if (PORTRAIT) {
+    const rest = Math.max(0, wh - gh);
+    if (rest > 90) { botH = Math.round(clamp(rest * 0.58, 150, Math.min(rest - 60, 430))); topH = Math.round(rest - botH); }
+  }
+  sizeBand(bandT, gw, topH, dpr); sizeBand(bandB, gw, botH, dpr);
+
+  // the crisp layer matches the picture box but keeps device resolution
   UIS = clamp(Math.max(px, Math.round(scale * dpr)), 1, 6);
   while (UIS > 1 && VW * UIS * VH * UIS > 4200000) UIS--;
-  uc.style.width = (VW * scale) + 'px'; uc.style.height = (VH * scale) + 'px';
-  uc.width = VW * UIS; uc.height = VH * UIS;
+  uc.style.width = gw + 'px'; uc.style.height = gh + 'px';
+  uc.width = Math.round(VW * UIS); uc.height = Math.round(VH * UIS);
   UX.imageSmoothingEnabled = false;
+
+  placeControls(gw, gh, topH, botH, (ww - gw) / 2);
 }
 
 /* ========================================================== MAIN LOOP === */
