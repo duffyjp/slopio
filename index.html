@@ -2,19 +2,88 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<!--
+  ============================================================================
+  SLOPIO - a gelatinous cube in three grids
+  (c) 2026 duffyjp - MIT licensed (see the LICENSE file in the repository)
+
+  play    https://duffyjp.github.io/slopio/
+  source  https://github.com/duffyjp/slopio
+
+  One self-contained HTML file. All art is drawn to offscreen canvases at load
+  and all sound is synthesized with the Web Audio API - no libraries, no
+  external assets. The script is assembled from thirteen parts, marked with
+  pNN_name.js section headers, and is safe to split back apart.
+  ============================================================================
+-->
+<meta name="author" content="duffyjp">
+<meta name="description" content="SLOPIO - a gelatinous cube in three grids. A single-file pixel-art platformer by duffyjp, MIT licensed.">
+<meta name="license" content="MIT - https://github.com/duffyjp/slopio/blob/main/LICENSE">
+<meta property="og:title" content="SLOPIO - a gelatinous cube in three grids">
+<meta property="og:description" content="A single-file pixel-art platformer by duffyjp. All art drawn in code, all sound synthesized. MIT licensed.">
 <title>SLOPIO — a gelatinous cube in three grids</title>
 <style>
   html, body { margin: 0; padding: 0; height: 100%; background: #05070a; overflow: hidden;
-    display: flex; align-items: center; justify-content: center; }
-  canvas { image-rendering: pixelated; image-rendering: crisp-edges;
+    display: flex; align-items: center; justify-content: center; touch-action: none;
+    -webkit-user-select: none; user-select: none; -webkit-text-size-adjust: 100%; }
+  #wrap { position: relative; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block;
     box-shadow: 0 0 70px rgba(80, 240, 180, 0.14), 0 0 2px rgba(143, 240, 200, 0.5); }
+  /* crisp text layer: sits exactly over the pixel buffer, never takes touches */
+  #ui { position: absolute; left: 0; top: 0; box-shadow: none; pointer-events: none;
+    image-rendering: auto; }
   #err { position: fixed; left: 12px; bottom: 12px; color: #ff8fa3; font: 12px monospace;
     display: none; max-width: 82%; background: rgba(0,0,0,.6); padding: 6px 8px; }
+
+  /* ---- touch pad: shown only on coarse-pointer devices (phones/tablets) -- */
+  #pad { display: none; }
+  @media (hover: none) and (pointer: coarse) { #pad { display: block; } }
+  .btn { position: fixed; z-index: 6; box-sizing: border-box; pointer-events: auto;
+    touch-action: none; -webkit-tap-highlight-color: transparent; -webkit-user-select: none;
+    user-select: none; padding: 0; cursor: pointer;
+    width: 16vmin; height: 16vmin; border-radius: 50%;
+    background: rgba(8, 20, 16, 0.42); border: 2px solid rgba(143, 240, 200, 0.34);
+    color: rgba(143, 240, 200, 0.85); font: 600 6.4vmin/1 monospace; text-shadow: 0 1px 0 #000; }
+  .btn.on { background: rgba(143, 240, 200, 0.26); border-color: #8ef0c8; color: #ffe14f; }
+  .bL { left: 3vmin;  bottom: 4vmin; }
+  .bR { left: 22vmin; bottom: 4vmin; }
+  .bD { left: 12.5vmin; bottom: 22vmin; }
+  .bA { right: 3vmin;  bottom: 4vmin; }
+  .bB { right: 22vmin; bottom: 4vmin; }
+  .bS { right: 12.5vmin; bottom: 22vmin; }
+  .bP { right: 3vmin; top: max(3vmin, env(safe-area-inset-top)); width: 13vmin; height: 13vmin;
+    font-size: 4.4vmin; }
+  /* a real link for touch devices, where there is no G key to press */
+  #linkbar { display: none; }
+  @media (hover: none) and (pointer: coarse) {
+    #linkbar { display: block; position: fixed; z-index: 6; pointer-events: auto;
+      bottom: max(2.5vmin, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+      font: 10px monospace; color: rgba(143, 240, 200, 0.6); text-decoration: none;
+      background: rgba(0, 0, 0, 0.35); padding: 3px 8px; border: 1px solid rgba(143,240,200,0.22); }
+  }
+  /* in landscape the letterbox has room at the sides, so lift the pads clear */
+  @media (orientation: landscape) {
+    .bL { bottom: 12vmin; } .bR { bottom: 12vmin; } .bD { bottom: 30vmin; }
+    .bA { bottom: 12vmin; } .bB { bottom: 12vmin; } .bS { bottom: 30vmin; }
+  }
 </style>
 </head>
 <body>
-<canvas id="game"></canvas>
+<div id="wrap">
+  <canvas id="game"></canvas>
+  <canvas id="ui"></canvas>
+</div>
+<div id="pad" aria-hidden="false">
+  <button class="btn bL" data-key="ArrowLeft" aria-label="move left">&#9664;</button>
+  <button class="btn bR" data-key="ArrowRight" aria-label="move right">&#9654;</button>
+  <button class="btn bD" data-key="ArrowDown" aria-label="jelly slam">&#9660;</button>
+  <button class="btn bA" data-key="Space" aria-label="jump">&#9650;</button>
+  <button class="btn bB" data-key="KeyJ" aria-label="spit a glob">&#9678;</button>
+  <button class="btn bS" data-key="KeyP" aria-label="pause">II</button>
+  <button class="btn bP" data-key="Enter" aria-label="start or confirm">START</button>
+</div>
+<a id="linkbar" href="https://github.com/duffyjp/slopio" rel="noopener">github.com/duffyjp/slopio · MIT</a>
 <div id="err"></div>
 <script>
 
@@ -22,6 +91,10 @@
 /* ============================================================================
    SLOPIO — a 2.5D pixel-art platformer in a single HTML file.
    All art is drawn to offscreen canvases at load. All sound is synthesized.
+
+   (c) 2026 duffyjp — MIT licensed, see LICENSE in the repository.
+   source: https://github.com/duffyjp/slopio
+   play:   https://duffyjp.github.io/slopio/
    ============================================================================ */
 'use strict';
 
@@ -29,6 +102,15 @@
 const VW = 480, VH = 270;            // logical (pixel-art) resolution
 const TS = 16;                       // tile size
 const STEP = 1000 / 60;              // fixed timestep
+
+// --- attribution, shown on the title, pause, about card and end credits ----
+const AUTHOR   = 'duffyjp';
+const YEAR     = '2026';
+const LICENSE  = 'MIT';
+const REPO     = 'github.com/duffyjp/slopio';
+const REPO_URL = 'https://github.com/duffyjp/slopio';
+const PLAY_URL = 'https://duffyjp.github.io/slopio/';
+const CREDIT   = () => `SLOPIO © ${YEAR} ${AUTHOR} · ${LICENSE}`;
 
 // --- player metrics (levels are designed to be < 90% of these) -----------
 const GRAV          = 0.44;          // px/frame^2
@@ -668,6 +750,14 @@ const cx = cv.getContext('2d');
 const buf = document.createElement('canvas'); buf.width = VW; buf.height = VH;
 const B = buf.getContext('2d'); B.imageSmoothingEnabled = false;
 cx.imageSmoothingEnabled = false;
+/* The menu / card text used to be drawn into the 480x270 buffer and blown up
+   with it, which made it mushy. It is drawn into this second canvas instead:
+   its backing store is UIS device pixels per game pixel, so text renders sharp
+   while the pixel buffer underneath keeps its chunky look (nearest-neighbour
+   blits, because imageSmoothingEnabled stays off). */
+const uc = document.getElementById('ui');
+const UX = uc.getContext('2d'); UX.imageSmoothingEnabled = false;
+let UIS = 2;
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
@@ -1102,15 +1192,45 @@ const PT = {
 /* ============================================================== INPUT ==== */
 const K = { down: {}, hit: {} };
 const KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-  'KeyJ', 'KeyX', 'KeyK', 'KeyP', 'KeyM', 'KeyR', 'Enter', 'Escape'];
+  'KeyJ', 'KeyX', 'KeyK', 'KeyP', 'KeyM', 'KeyR', 'KeyC', 'KeyG', 'Enter', 'Escape'];
+
+/* One place for every input device: keyboard, touch pads and screen taps all
+   land in K.down / K.hit, which is all the game logic ever looks at.          */
+function press(code, repeat) {
+  if (!repeat) { K.down[code] = true; K.hit[code] = true; A.resume(); }
+  else K.down[code] = true;
+  return State.onKey(code);
+}
+function release(code) { K.down[code] = false; }
+
 window.addEventListener('keydown', e => {
-  if (KEYS.indexOf(e.code) >= 0) e.preventDefault();
-  if (!e.repeat) { K.down[e.code] = true; K.hit[e.code] = true; A.resume(); }
-  else K.down[e.code] = true;
-  if (State.onKey(e.code)) return;
+  // swallow game keys, but never Ctrl/Alt/Meta combos (Ctrl+C copy, Ctrl+R reload)
+  if (KEYS.indexOf(e.code) >= 0 && !e.ctrlKey && !e.metaKey && !e.altKey) e.preventDefault();
+  press(e.code, e.repeat);
 });
 window.addEventListener('keyup', e => { K.down[e.code] = false; });
 window.addEventListener('blur', () => { K.down = {}; if (State.id === 'play') State.set('pause'), S.pause(); });
+
+/* ---------------------------------------------------------- TOUCH INPUT -- */
+const COARSE = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+const MENUISH = { title: 1, about: 1, intro: 1, clear: 1, gameover: 1, cutscene: 1, credits: 1 };
+function wireTouch() {
+  for (const b of document.querySelectorAll('#pad [data-key]')) {
+    const code = b.getAttribute('data-key');
+    const on = ev => { ev.preventDefault(); b.classList.add('on'); press(code, false); };
+    const off = ev => { ev.preventDefault(); b.classList.remove('on'); release(code); };
+    b.addEventListener('pointerdown', on);
+    b.addEventListener('pointerup', off);
+    b.addEventListener('pointercancel', off);
+    b.addEventListener('pointerleave', off);
+    b.addEventListener('contextmenu', ev => ev.preventDefault());
+  }
+  // tapping the picture itself is Enter, so every card can be pushed through
+  cv.addEventListener('pointerdown', ev => {
+    ev.preventDefault();
+    if (MENUISH[State.id]) press('Enter', false);
+  });
+}
 const kd = (...c) => c.some(k => K.down[k]);
 const kh = (...c) => c.some(k => K.hit[k]);
 const L_ = () => kd('ArrowLeft', 'KeyA'), R_ = () => kd('ArrowRight', 'KeyD');
@@ -2520,6 +2640,11 @@ const State = {
     if (code === 'KeyM') { A.setMute(!A.muted); S.blip(); return true; }
     if (this.id === 'title') {
       if (code === 'Enter' || code === 'Space') { A.resume(); S.blip(); newGame(); return true; }
+      if (code === 'KeyC') { this.set('about'); S.blip(); return true; }
+    } else if (this.id === 'about') {
+      // G opens the repository; a keypress is a user gesture, so the browser allows it
+      if (code === 'KeyG') { try { window.open(REPO_URL, '_blank', 'noopener'); } catch (e) { } return true; }
+      if (code === 'KeyC' || code === 'Enter' || code === 'Escape') { this.set('title'); S.blip(); return true; }
     } else if (this.id === 'intro') { if (code === 'Enter') this.card = 0; }
     else if (this.id === 'play') { if (code === 'KeyP') { this.set('pause'); S.pause(); return true; } }
     else if (this.id === 'pause') { if (code === 'KeyP' || code === 'Enter') { this.set('play'); S.pause(); return true; }
@@ -2533,6 +2658,7 @@ const State = {
   update() {
     this.t++; this.sub++;
     if (this.id === 'title') updateTitle();
+    else if (this.id === 'about') updateTitle();   // same drifting backdrop + particles
     else if (this.id === 'intro') { if (this.t > 150) { this.set('play'); startTrackForLevel(); } }
     else if (this.id === 'play') updatePlay();
     else if (this.id === 'clear') { if (this.t > 200) advanceLevel(); }
@@ -2752,6 +2878,7 @@ function drawCutscene(g) {
     const bt = Math.abs(Math.sin(t * 0.07));
     drawSlopio(g, 46, VH - 28 - bt * 22, 1 + (1 - bt) * 0.15, 1 - (1 - bt) * 0.15, { face: 'happy', t, wob: 1 });
     txt(g, 'ENTER  back to title', VW / 2, VH - 22, 9, 'rgba(255,255,255,0.6)', 'center');
+    txt(g, CREDIT() + ' · ' + REPO, VW / 2, VH - 10, 7, 'rgba(255,246,200,0.55)', 'center');
   }
   // confetti on top of everything
   for (const p of c.conf) { g.save(); g.translate(p.x | 0, p.y | 0); g.rotate(p.r);
@@ -2773,10 +2900,40 @@ function drawCredits(g) {
   const lines = ['SLOPIO — a gelatinous cube in three grids', '', 'THE MARSH GRID · PIXEL FORGE · FROSTBYTE CATHEDRAL',
     'THE HEAT SINK & DIMMOLITH, 5600 MT/s OF PURE SPITE', '',
     'all art drawn in code · all sound synthesized', 'no assets were harmed', '',
-    'TIME ' + (State.cutTime || ''), 'SHARDS ' + Run.total + '/100   DEATHS ' + Run.deaths + '   KILLS ' + Run.kills];
-  lines.forEach((s, i) => txt(g, s, VW / 2, 80 + i * 14, 9, i === 0 ? '#8ef0c8' : 'rgba(255,255,255,0.8)', 'center'));
+    'TIME ' + (State.cutTime || ''), 'SHARDS ' + Run.total + '/100   DEATHS ' + Run.deaths + '   KILLS ' + Run.kills, '',
+    CREDIT() + ' · ' + LICENSE + ' licensed', 'source  ' + REPO + '   play  ' + PLAY_URL.replace('https://', '')];
+  const cols = ['#8ef0c8', '', 'rgba(255,255,255,0.8)', 'rgba(255,255,255,0.8)', '', 'rgba(255,255,255,0.8)',
+    'rgba(255,255,255,0.8)', '', 'rgba(255,255,255,0.8)', 'rgba(255,255,255,0.8)', '', '#ffe14f', '#8fdcff'];
+  lines.forEach((s, i) => txt(g, s, VW / 2, 74 + i * 13, 9, cols[i] || 'rgba(255,255,255,0.8)', 'center'));
   const blink = (State.t % 60) < 40;
   if (blink && State.t > 120) txt(g, 'PRESS ENTER', VW / 2, VH - 34, 11, '#ffe14f', 'center');
+}
+
+/* ============================================================== ABOUT ==== */
+/* Attribution card, reached from the title screen with C. The links are plain
+   text on a canvas, so G opens the repository in a real browser tab.          */
+function drawAbout(g) {
+  titleBackdrop(g);
+  PT.draw(g, { x: 0, y: 0 });
+  bigTitle(g, 'ABOUT', VW / 2, 20, '#8ef0c8');
+  drawSlopio(g, 52, 52, 1.8, 1.8, { face: 'happy', t: TitleT, wob: 2, glow: 'rgba(79,214,166,0.45)' });
+  const rows = [
+    ['SLOPIO — a gelatinous cube in three grids', 9, '#8ef0c8'],
+    ['© ' + YEAR + ' ' + AUTHOR + ' · ' + LICENSE + ' licensed', 9, '#ffe14f'],
+    ['', 8, ''],
+    ['one HTML file · no build step · no libraries', 8, 'rgba(255,255,255,0.75)'],
+    ['every sprite drawn to a canvas at load, every sound synthesized', 8, 'rgba(255,255,255,0.75)'],
+    ['', 8, ''],
+    ['PLAY     ' + PLAY_URL.replace('https://', ''), 9, '#fff'],
+    ['SOURCE   ' + REPO_URL, 9, '#fff'],
+    ['LICENSE  ' + LICENSE + ' — use it, change it, share it, keep the notice', 8, 'rgba(255,255,255,0.75)'],
+    ['', 8, ''],
+    [COARSE ? 'the link at the bottom opens ' + REPO : 'G  open ' + REPO + ' in a browser tab', 8, '#8fdcff']
+  ];
+  let y = 62;
+  for (const r of rows) { if (r[0]) txt(g, r[0], VW / 2, y, r[1], r[2], 'center'); y += r[1] + 8; }
+  const blink = (State.t % 50) < 34;
+  if (blink && State.t > 20) txt(g, 'C  back to title', VW / 2, VH - 22, 10, '#ffe14f', 'center');
 }
 
 /* ==== p13_main.js ==== */
@@ -2790,8 +2947,8 @@ function updateTitlePhysics() {
   if (c.x < 40 || c.x > 150) c.dx = -(c.dx || 0.4);
   c.x += (c.dx || 0.4);
 }
-function drawTitle(g) {
-  // backdrop: deep gradient + drifting grid of tiny chips
+function titleBackdrop(g) {
+  // deep gradient + drifting grid of tiny chips
   const grd = g.createLinearGradient(0, 0, 0, VH);
   grd.addColorStop(0, '#08130f'); grd.addColorStop(0.6, '#0f2430'); grd.addColorStop(1, '#1a1428');
   g.fillStyle = grd; g.fillRect(0, 0, VW, VH);
@@ -2800,6 +2957,9 @@ function drawTitle(g) {
     g.fillStyle = 'rgba(120,200,170,0.10)'; g.fillRect(x | 0, y | 0, 8, 4);
     g.fillStyle = 'rgba(255,225,79,0.12)'; g.fillRect((x | 0) + 1, (y | 0) + 4, 6, 1);
   }
+}
+function drawTitle(g) {
+  titleBackdrop(g);
   updateTitlePhysics();
   const c = titleCube;
   g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(c.x, 210, 14, 3.5, 0, 0, TAU); g.fill();
@@ -2809,16 +2969,21 @@ function drawTitle(g) {
   txt(g, 'a gelatinous cube in three grids', VW / 2, 84, 10, 'rgba(143,240,200,0.8)', 'center');
   const blink = (TitleT % 70) < 48;
   if (blink) txt(g, 'PRESS ENTER TO SQUISH', VW / 2, 112, 11, '#ffe14f', 'center');
-  // controls card
-  g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(VW / 2 - 128, 138, 256, 74);
-  g.strokeStyle = 'rgba(143,240,200,0.35)'; g.strokeRect(VW / 2 - 127.5, 138.5, 255, 74);
+  // controls card — one line per row, each short enough to stay inside the box
+  const rows = COARSE
+    ? ['ARROWS / WASD  or the on-screen pads', 'SPACE or ▲  jump        ▼  jelly slam',
+       'J or ◎  spit a glob        II  pause', 'C  about — license & source']
+    : ['ARROWS / WASD  move       SPACE  jump', 'DOWN  jelly slam      J  spit a glob',
+       'P  pause      M  mute      R  restart', 'C  about — license & source'];
+  const boxH = 30 + rows.length * 14;
+  g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(VW / 2 - 128, 138, 256, boxH);
+  g.strokeStyle = 'rgba(143,240,200,0.35)'; g.strokeRect(VW / 2 - 127.5, 138.5, 255, boxH);
   txt(g, 'CONTROLS', VW / 2, 144, 9, '#8ef0c8', 'center');
-  txt(g, 'ARROWS / WASD  move      SPACE  jump (hold to fly higher)', VW / 2, 158, 8, '#fff', 'center');
-  txt(g, 'DOWN  jelly slam      J  spit a goo glob (it arcs as it flies)', VW / 2, 171, 8, '#fff', 'center');
-  txt(g, 'P  pause      M  mute      R  restart level', VW / 2, 184, 8, 'rgba(255,255,255,0.7)', 'center');
-  txt(g, 'three globs in the air at most — gel loads special ammo for a while', VW / 2, 198, 8, 'rgba(255,225,79,0.75)', 'center');
+  rows.forEach((s, i) => txt(g, s, VW / 2, 158 + i * 14, 8,
+    i === rows.length - 1 ? 'rgba(255,255,255,0.5)' : '#fff', 'center'));
   const best = Run.best ? `${Math.floor(Math.floor(Run.best / 60) / 60)}:${String(Math.floor(Run.best / 60) % 60).padStart(2, '0')}` : '--';
   txt(g, 'BEST ' + best + (Run.overclock ? '   ★ OVERCLOCK' : ''), VW / 2, VH - 22, 9, 'rgba(255,255,255,0.55)', 'center');
+  txt(g, CREDIT() + ' · ' + REPO, VW / 2, VH - 10, 7, 'rgba(143,240,200,0.55)', 'center');
   PT.draw(g, { x: 0, y: 0 });
 }
 
@@ -2831,7 +2996,8 @@ function drawIntroCard(g) {
   bigTitle(g, L.pal.name, VW / 2, y, L.pal.lit);
   txt(g, L.def.pal === 'L4' ? 'BOSS' : 'LEVEL ' + (L.idx + 1), VW / 2, y + 44, 10, 'rgba(255,255,255,0.6)', 'center');
   txt(g, L.pal.sub, VW / 2, y + 58, 9, L.pal.lit, 'center');
-  if (L.idx === 0) txt(g, L.def.hint, VW / 2, y + 78, 8, 'rgba(255,255,255,0.7)', 'center');
+  if (L.idx === 0) txt(g, COARSE ? 'the pads move him   ▲ jump   ▼ slam   ◎ spit'
+    : 'MOVE arrows / WASD   SPACE jump   DOWN slam   J spit', VW / 2, y + 78, 8, 'rgba(255,255,255,0.7)', 'center');
   if (L.idx === 3) {
     txt(g, 'ride the floor jets up to the fins, pelt him, drop back down', VW / 2, y + 78, 8, '#ff9ec4', 'center');
     txt(g, 'eight clean hits jam his armour — then squish him', VW / 2, y + 90, 8, '#ff9ec4', 'center');
@@ -2857,6 +3023,7 @@ function drawPause(g) {
   bigTitle(g, 'PAUSED', VW / 2, 96, '#8ef0c8');
   txt(g, 'P  resume      R  restart level      M  mute', VW / 2, 150, 9, 'rgba(255,255,255,0.8)', 'center');
   if (boss) txt(g, 'tip: lure him into a fin, or land eight globs to jam his armour', VW / 2, 168, 8, '#ff9ec4', 'center');
+  txt(g, CREDIT() + ' · ' + REPO, VW / 2, VH - 12, 7, 'rgba(255,255,255,0.4)', 'center');
 }
 function drawGameOver(g) {
   g.fillStyle = 'rgba(10,6,8,0.8)'; g.fillRect(0, 0, VW, VH);
@@ -2929,36 +3096,80 @@ function drawWorld(g) {
 }
 
 /* ============================================================ RENDER ==== */
+/* Menus and cards are text-heavy, so they are drawn to the crisp layer when it
+   has more resolution than the picture does. The world, the HUD and the
+   cutscene keep drawing to the 480x270 pixel buffer exactly as before.        */
+const CRISP = { title: 1, about: 1, credits: 1, intro: 1, clear: 1, pause: 1, gameover: 1 };
+const NO_WORLD = { title: 1, about: 1, credits: 1 };
+let uiOn = false;
+function clearCrisp() {
+  if (!uiOn) return;
+  UX.setTransform(1, 0, 0, 1, 0, 0);
+  UX.clearRect(0, 0, uc.width, uc.height);
+  uiOn = false;
+}
 function render() {
   B.setTransform(1, 0, 0, 1, 0, 0);
   B.globalAlpha = 1;
   B.clearRect(0, 0, VW, VH);
   const id = State.id;
-  if (id === 'title') drawTitle(B);
-  else if (id === 'cutscene') drawCutscene(B);
-  else if (id === 'credits') drawCredits(B);
-  else {
-    drawWorld(B);
-    if (id === 'intro') drawIntroCard(B);
-    else if (id === 'clear') drawClearCard(B);
-    else if (id === 'pause') drawPause(B);
-    else if (id === 'gameover') drawGameOver(B);
+  if (CRISP[id] && UIS >= px) {
+    UX.setTransform(1, 0, 0, 1, 0, 0);
+    UX.clearRect(0, 0, uc.width, uc.height);
+    UX.globalAlpha = 1;
+    UX.setTransform(UIS, 0, 0, UIS, 0, 0);
+    uiOn = true;
+    if (!NO_WORLD[id]) drawWorld(B);
+    const g = UX;
+    if (id === 'title') drawTitle(g);
+    else if (id === 'about') drawAbout(g);
+    else if (id === 'credits') drawCredits(g);
+    else if (id === 'intro') drawIntroCard(g);
+    else if (id === 'clear') drawClearCard(g);
+    else if (id === 'pause') drawPause(g);
+    else if (id === 'gameover') drawGameOver(g);
+  } else {
+    clearCrisp();
+    if (id === 'cutscene') drawCutscene(B);
+    else {
+      drawWorld(B);
+      if (id === 'intro') drawIntroCard(B);
+      else if (id === 'clear') drawClearCard(B);
+      else if (id === 'pause') drawPause(B);
+      else if (id === 'gameover') drawGameOver(B);
+      else if (id === 'title') drawTitle(B);
+      else if (id === 'about') drawAbout(B);
+      else if (id === 'credits') drawCredits(B);
+    }
   }
   blit();
 }
-let scale = 3;
+let scale = 3;   // game pixels -> CSS pixels
+let px = 3;      // game pixels -> backing pixels of the pixel buffer
 function blit() {
   cx.setTransform(1, 0, 0, 1, 0, 0);
   cx.imageSmoothingEnabled = false;
   cx.clearRect(0, 0, cv.width, cv.height);
-  cx.drawImage(buf, 0, 0, VW, VH, 0, 0, VW * scale, VH * scale);
+  cx.drawImage(buf, 0, 0, VW, VH, 0, 0, VW * px, VH * px);
 }
 function fit() {
   const ww = window.innerWidth, wh = window.innerHeight;
-  scale = Math.max(1, Math.min(6, Math.floor(Math.min(ww / VW, wh / VH))));
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  const want = Math.min(ww / VW, wh / VH);
+  scale = Math.max(1, Math.min(6, Math.floor(want)));
+  if (want < 1) scale = Math.max(0.4, want);   // portrait phone: letterbox, never clip
+  px = scale >= 1 ? scale : clamp(Math.round(scale * dpr), 1, 6);
   cv.style.width = (VW * scale) + 'px'; cv.style.height = (VH * scale) + 'px';
-  cv.width = VW * scale; cv.height = VH * scale;
+  cv.width = VW * px; cv.height = VH * px;
   cx.imageSmoothingEnabled = false;
+  // the crisp layer matches the CSS box but backs it with device pixels
+  // the crisp layer only pays off once it has at least as many pixels as the
+  // upscaled picture does; below that the old path is identical and cheaper
+  UIS = clamp(Math.max(px, Math.round(scale * dpr)), 1, 6);
+  while (UIS > 1 && VW * UIS * VH * UIS > 4200000) UIS--;
+  uc.style.width = (VW * scale) + 'px'; uc.style.height = (VH * scale) + 'px';
+  uc.width = VW * UIS; uc.height = VH * UIS;
+  UX.imageSmoothingEnabled = false;
 }
 
 /* ========================================================== MAIN LOOP === */
@@ -2985,6 +3196,9 @@ function boot() {
   buildVignette();
   fit();
   window.addEventListener('resize', fit);
+  // some browsers report the new viewport a beat after an orientation change
+  window.addEventListener('orientationchange', () => setTimeout(fit, 150));
+  wireTouch();
   // a level must exist for the title screen background maths
   loadLevel(0, true);
   Cam.snap(Pl, L);
